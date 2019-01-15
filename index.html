@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+	<meta charset="UTF-8">
+	<title>VR大阪丼 - #マストドン #Mastodon</title>
+
+	<link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+	<link rel="stylesheet" href="css/normalize.css">
+	<link rel="stylesheet" href="css/skeleton.css">
+	<link rel="stylesheet" href="css/site.css">
+
+	<style>
+		*{ margin:0; padding:0 }
+		body{ color:white; }
+		#text-canvas-container { display:none; }
+		#image-container { display:none; }
+		#ui-container {
+			position: fixed;
+			bottom: 20px;
+			right: 20px;
+		}
+	</style>
+</head>
+<body>
+
+<div id="ddd-area"></div>
+<div id="text-canvas-container"></div>
+<div id="image-container"></div>
+
+<div id="ui-container">
+	※VRではないです
+	<b><a href="https://mstdn.osaka"><img src="https://mstdn.osaka/assets/logo-8463e94d1061a72aafbb710a64b7890a1eefc09639555b5e4e674faac106be16.png" width=20>大阪丼</a></b>
+	<a href="https://twitter.com/share" class="twitter-share-button">Tweet</a>
+	<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
+</div>
+
+<script src="./three.js-master/build/three.js"></script>
+<script src="./three.js-master/examples/js/controls/DeviceOrientationControls.js"></script>
+<script src="./three.js-master/examples/js/controls/TrackballControls.js"></script>
+<script src="./three.js-master/examples/js/renderers/CanvasRenderer.js"></script>
+<script src="./three.js-master/examples/js/renderers/Projector.js"></script>
+<script src="https://unpkg.com/mithril@1.1.1/mithril.js"></script>
+<script>
+/* config */
+var width = window.innerWidth;
+var height = window.innerHeight;
+var aspect = width / height;
+var antialias = true;
+/* global */
+var camera, scene, renderer, loader;
+var controls;
+/* objects */
+var axis, grid;
+var known_of = {};
+var is_pc = false;
+function init() {
+	renderer = new THREE.WebGLRenderer();
+	renderer.setSize(width, height);
+	renderer.setClearColor(0x000000);
+	document.getElementById("ddd-area").appendChild(renderer.domElement);
+	scene = new THREE.Scene();
+	camera = new THREE.PerspectiveCamera(45, aspect, 1, 2000);
+	camera.position.set(0, 0, 150);
+	camera.up.set(0, 1, 0);
+	camera.lookAt({ x: 0, y: 0, z: 0});
+	loader = new THREE.TextureLoader();
+	var ua = navigator.userAgent.toLowerCase();
+	if (ua.indexOf('iphone') > 0 || ua.indexOf('ipad') > 0 || ua.indexOf('android') > 0) {
+		controls = new THREE.DeviceOrientationControls(camera);
+	} else {
+		is_pc = true;
+		camera.position.set(0, 0, 300);
+		controls = new THREE.TrackballControls(camera);
+	}
+}
+function initObjects() {
+/*
+	axis = new THREE.AxisHelper(100);
+	scene.add(axis);
+	grid = new THREE.GridHelper(150, 5);
+	scene.add(grid);
+*/
+
+	if (is_pc) {
+		addImagePanel("images/osakadon1stanniv.png", 100, 100, 200, -50, -50);
+	} else {
+		addImagePanel("images/osakadon1stanniv.png", 50, 50, 100, -50, -50);
+	}
+	addImagePanel("/assets/background-photo-4d5afc27a5805bfb866b8f7f5067c66af99595cdc8dc46ece07fb5ff375cc3d5.png", 1284, 916, 0, 0, -300);
+	addImagePanel("/mstdn-osaka/media_attachments/files/000/048/562/original/275107bc66d37b8f.jpeg", 500, 500, 0, -500, 100);
+}
+function addImagePanel(img_path, gx, gy, x, y, z) {
+	var geometry = new THREE.PlaneGeometry(gx, gy);
+	var texture = loader.load(img_path);
+	var material = new THREE.MeshBasicMaterial({
+		map: texture,
+		transparent: true
+	});
+	var mesh = new THREE.Mesh(geometry, material);
+	mesh.rotation.set(- Math.PI/2, 0, Math.PI);
+	mesh.position.set(x, y, z);
+	mesh.up.set(0, 1, 0);
+	scene.add(mesh);
+	mesh.lookAt(camera.position)
+	return {
+		geometry: geometry,
+		texture: texture,
+		material: material,
+		mesh: mesh,
+	};
+}
+function addCanvasPanel(canvas, textLength) {
+	var geometry = new THREE.PlaneGeometry(100, 100);
+	var texture = new THREE.Texture(canvas);
+	var material = new THREE.MeshBasicMaterial({
+		map: texture,
+		transparent: true
+	});
+	var mesh = new THREE.Mesh(geometry, material);
+	mesh.material.map.needsUpdate = true;
+	mesh.rotation.set(- Math.PI/2, 0, Math.PI);
+	mesh.position.set(Math.random()*400-200, Math.random()*200-150 + textLength/50, Math.random()*100 - 50 - textLength/50);
+	mesh.up.set(0, 1, 0);
+	scene.add(mesh);
+	mesh.lookAt(camera.position)
+	return {
+		geometry: geometry,
+		texture: texture,
+		material: material,
+		mesh: mesh,
+	};
+}
+function draw() {
+	controls.update();
+	renderer.render(scene, camera);
+	requestAnimationFrame(draw);
+}
+init();
+initObjects();
+draw();
+
+var limit = 40;
+
+function load() {
+	m.request({
+		method: "GET",
+		url: "https://mstdn.osaka/api/v1/timelines/public",
+		data: {local: true, limit: limit},
+		withCredentials: true,
+	}).then(function(data) {
+		for (var i = 0; i < data.length; i++) {
+			(function(i) {
+				// 既に描画済みなら何もしない
+				if (known_of[data[i].id]) {
+					console.log("[PASS]AlreadyKnown:" + data[i].id);
+					return;
+				}
+				console.log("NewData:" + data[i].id);
+				var known = {
+					data: data[i],
+					children: []
+				};
+				known_of[data[i].id] = known;
+				
+				// 描画最大を超えたら古いものを削除する
+				if (Object.keys(known_of).length > limit) {
+					var id = Math.min.apply(null, Object.keys(known_of));
+					console.log("[DELETE]Old:" + id);
+					var old = known_of[id];
+					scene.remove(old.mesh);
+					old.geometry && old.geometry.dispose();
+					old.material && old.material.dispose();
+					old.texture && old.texture.dispose();
+
+					old.media_attachments.forEach(function(oldmedia) {
+						scene.remove(oldmedia.mesh);
+						oldmedia.geometry && oldmedia.geometry.dispose();
+						oldmedia.material && oldmedia.material.dispose();
+						oldmedia.texture && oldmedia.texture.dispose();
+					});
+
+					delete known_of[id];
+				}
+
+				// canvas生成
+				var canvas = document.createElement("canvas");
+				known["canvas"] = canvas;
+				canvas.id = "text-canvas-" + i;
+				canvas.width = 512;
+				canvas.height = 512;
+				var context = canvas.getContext("2d");
+
+				// アイコン描画
+				var img = new Image();
+				img.src = data[i].account.avatar.replace("https://storage.googleapis.com", "");
+				img.addEventListener("load", function() {
+					context.drawImage(img, 0, 0, 60, 60);
+					var res = addCanvasPanel(canvas, textLength);
+					known["geometry"] = res.geometry;
+					known["material"] = res.material;
+					known["texture"] = res.texture;
+					known["mesh"] = res.mesh;
+				});
+				document.getElementById("image-container").appendChild(img);
+
+				// アカウント情報描画
+				context.fillStyle = "white";
+				context.font = "bold 18px Raleway";
+				context.fillText(data[i].account.display_name + " @" + data[i].account.username, 70, 18);
+				context.fillStyle = "black";
+				context.strokeText(data[i].account.display_name + " @" + data[i].account.username, 70, 18);
+
+				// トゥート描画
+				context.font = "bold 20px Raleway";
+				var content = data[i].content;
+				content = content.replace(/<br \/>/g, "\n");
+				content = content.replace(/<[^>]+>/g, "");
+				
+				var lines = [""];
+				var textLength = 0;
+				for (var j = 0; j < content.length; j++) {
+					var char = content.charAt(j);
+					if (char == "\n" || lines[lines.length-1].length > 20) {
+						lines[lines.length] = "";
+					}
+					textLength++;
+					lines[lines.length-1] += char;
+				}
+				for (var j = 0; j < lines.length; j++) {
+					var line = lines[j];
+					context.fillStyle = "white";
+					context.fillText(line, 70, 42 + j*22);
+					context.fillStyle = "black";
+					context.strokeText(line, 70, 42 + j*22);
+				}
+
+				document.getElementById("text-canvas-container").appendChild(canvas);
+
+				// 添付画像描画
+				data[i].media_attachments.forEach(function(media) {
+					console.log(media);
+					var res = addImagePanel(media.preview_url.replace("https://storage.googleapis.com", ""), 
+						media.meta.small.width/5,
+						media.meta.small.height/5, 
+						Math.random()*400-200, Math.random()*200-150, Math.random()*50);
+					known.children.push({
+						media: media,
+						geometry: res.geometry,
+						material: res.material,
+						texture: res.texture,
+						mesh: res.mesh,
+					});
+					console.log(known);
+				});
+
+			})(i);
+		}
+	});
+}
+load();
+setInterval(load, 5000);
+</script>
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-99294897-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+</body>
+</html>
